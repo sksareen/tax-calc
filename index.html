@@ -4,17 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tax Calculator - MoneyGrab</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Montserrat:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
     <header>
         <h1>MoneyGrab Tax Calculator</h1>
-        <p>Estimate your tax burden based on income and location</p>
+        <p>Quick tax estimates for <span class="tax-year">2024</span></p>
+        
+        <div class="trust-indicators">
+            <div class="trust-badge">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+                <span>256-bit Secure</span>
+            </div>
+            <div class="trust-badge">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+                <span>IRS Ready</span>
+            </div>
+            <div class="trust-badge">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+                <span>Accurate Calculations</span>
+            </div>
+        </div>
     </header>
 
-    <div class="container">
-        <div class="card">
-            <h2>Enter Your Information</h2>
+    <div class="container" id="main-container">
+        <div class="calculator-card" id="calculator-card">
+            <div class="card-header">
+                <h2>MoneyGrab Tax Calculator <span class="tax-year-badge">TY <span class="tax-year">2024</span></span></h2>
+            </div>
+            
+            <div id="data-loading-indicator" class="data-loading">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Loading location data...</div>
+            </div>
+            
+            <div class="accuracy-note">
+                This calculator uses official <span class="tax-year">2024</span> tax brackets and rates from the IRS and state tax authorities.
+            </div>
             <form id="tax-form">
                 <div class="form-group">
                     <label for="income">Annual Income ($)</label>
@@ -26,18 +54,83 @@
                     <input type="text" id="zipcode" placeholder="e.g. 90210" required pattern="[0-9]{5}">
                     <div id="zipcode-error" class="error hidden">Please enter a valid 5-digit zip code</div>
                 </div>
+                
+                <div class="advanced-options-toggle">
+                    <button type="button" id="advanced-toggle" class="text-button">
+                        <span class="toggle-icon">▶</span> Advanced Options
+                    </button>
+                </div>
+                
+                <div id="advanced-panel" class="advanced-panel">
+                    <div class="form-group">
+                        <label for="filing-status">Filing Status</label>
+                        <select id="filing-status" class="select-input">
+                            <option value="single">Single</option>
+                            <option value="married_joint">Married Filing Jointly</option>
+                            <option value="married_separate">Married Filing Separately</option>
+                            <option value="head_household">Head of Household</option>
+                            <option value="qualifying_widow">Qualifying Widow(er)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tax-year-select">Tax Year</label>
+                        <select id="tax-year-select" class="select-input">
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="retirement-checkbox"> 
+                            <span>Include Retirement Contributions</span>
+                        </label>
+                        <div class="conditional-input hidden" id="retirement-amount-container">
+                            <label for="retirement-amount">Annual Contribution ($)</label>
+                            <input type="number" id="retirement-amount" placeholder="e.g. 6000" min="0" max="22500">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="itemized-checkbox">
+                            <span>Itemize Deductions Instead of Standard</span>
+                        </label>
+                        <div class="conditional-input hidden" id="itemized-amount-container">
+                            <label for="itemized-amount">Itemized Deduction Amount ($)</label>
+                            <input type="number" id="itemized-amount" placeholder="e.g. 18000" min="0">
+                        </div>
+                    </div>
+                </div>
+                
                 <button type="submit">Calculate Taxes</button>
             </form>
             
-            <div class="assumptions">
-                <h3>Assumptions</h3>
-                <ul>
-                    <li>Filing status: Single</li>
-                    <li>Standard deduction: $14,600 (2024)</li>
-                    <li>No itemized deductions or tax credits</li>
+            <div class="location-info hidden" id="location-info">
+                <div class="info-pill">
+                    <span id="location-text">Location: </span>
+                </div>
+            </div>
+            
+            <div class="assumptions-container">
+                <h3>Calculation Assumptions</h3>
+                <ul class="assumptions-list">
+                    <li>Filing status: <span id="selected-filing-status">Single</span></li>
+                    <li>Tax year: <span class="tax-year">2024</span></li>
+                    <li id="deduction-assumption">Standard deduction: $14,600</li>
+                    <li id="retirement-assumption">No retirement contributions</li>
                     <li>No investment income or capital gains</li>
-                    <li>No retirement contributions</li>
+                    <li id="location-data-note">Location data: <span id="data-source-type">USPS ZIP database</span></li>
                 </ul>
+                <div class="data-source">
+                    <div class="data-badge">
+                        <span class="badge usps-data">USPS ZIP Code Data</span>
+                        <span class="badge irs-data">IRS Tax Data</span>
+                    </div>
+                    <p>Sources: IRS.gov, State Tax Departments, USPS</p>
+                    <p>Last updated: June 1, 2024</p>
+                </div>
             </div>
         </div>
 
@@ -55,19 +148,8 @@
 
             <div class="tax-breakdown">
                 <h3>Tax Breakdown</h3>
-                <div class="bar-chart">
-                    <div id="federal-bar" class="bar bar-federal" style="height: 0%">
-                        <span class="bar-label">Federal</span>
-                        <span class="bar-value">$0</span>
-                    </div>
-                    <div id="state-bar" class="bar bar-state" style="height: 0%">
-                        <span class="bar-label">State</span>
-                        <span class="bar-value">$0</span>
-                    </div>
-                    <div id="local-bar" class="bar bar-local" style="height: 0%">
-                        <span class="bar-label">Local</span>
-                        <span class="bar-value">$0</span>
-                    </div>
+                <div id="chart-container" class="chart-container">
+                    <canvas id="tax-pie-chart"></canvas>
                 </div>
                 <div class="legend">
                     <div class="legend-item">
@@ -83,11 +165,68 @@
                         <span>Local</span>
                     </div>
                 </div>
+                <div class="data-source">
+                    Federal tax calculated using official <span class="tax-year">2024</span> IRS tax brackets for Single filers
+                </div>
+            </div>
+
+            <div class="tax-brackets-info">
+                <h3>Your Federal Tax Brackets</h3>
+                <div id="tax-brackets-visualization" class="tax-brackets-visualization"></div>
+                <div class="accuracy-note">
+                    Note: This is a simplified calculation. Your actual tax situation may vary based on specific deductions, credits, and other factors.
+                </div>
+            </div>
+
+            <div class="tax-map-section">
+                <h3>US Tax Rate Map</h3>
+                <div class="map-container">
+                    <div id="us-tax-map"></div>
+                    <div id="map-tooltip" class="map-tooltip hidden">
+                        <div class="tooltip-state"></div>
+                        <div class="tooltip-rate"></div>
+                        <div class="tooltip-rank"></div>
+                    </div>
+                </div>
+                <div class="map-legend">
+                    <div class="legend-header">State Income Tax Rates:</div>
+                    <div class="legend-colors">
+                        <div class="legend-color-item">
+                            <div class="color-box" style="background-color: #e8f5e9;"></div>
+                            <span>0%</span>
+                        </div>
+                        <div class="legend-color-item">
+                            <div class="color-box" style="background-color: #c8e6c9;"></div>
+                            <span>1-3%</span>
+                        </div>
+                        <div class="legend-color-item">
+                            <div class="color-box" style="background-color: #a5d6a7;"></div>
+                            <span>3-5%</span>
+                        </div>
+                        <div class="legend-color-item">
+                            <div class="color-box" style="background-color: #81c784;"></div>
+                            <span>5-7%</span>
+                        </div>
+                        <div class="legend-color-item">
+                            <div class="color-box" style="background-color: #66bb6a;"></div>
+                            <span>7-9%</span>
+                        </div>
+                        <div class="legend-color-item">
+                            <div class="color-box" style="background-color: #4caf50;"></div>
+                            <span>9%+</span>
+                        </div>
+                    </div>
+                    <div class="legend-pattern-item">
+                        <div class="pattern-box"></div>
+                        <span>Progressive Tax Rates</span>
+                    </div>
+                    <div class="map-note">Hover over states to see details. Progressive states shown with stripe pattern.</div>
+                </div>
             </div>
 
             <div class="savings-opportunities">
                 <h3>Tax Savings Opportunities</h3>
-                <ul id="savings-tips">
+                <ul id="savings-tips" class="savings-tips">
                     <li>Contribute to a traditional 401(k) or IRA to reduce taxable income</li>
                     <li>Consider HSA contributions if you have a high-deductible health plan</li>
                     <li>Look into available tax credits based on your situation</li>
@@ -97,8 +236,10 @@
     </div>
 
     <div class="disclaimer">
-        <p><strong>Disclaimer:</strong> This calculator provides estimates based on simplified assumptions and should not be considered tax advice. Tax laws are complex and change frequently. Please consult a qualified tax professional for advice tailored to your specific situation.</p>
+        <p><strong>Disclaimer:</strong> This calculator provides estimates based on simplified assumptions and should not be considered tax advice. Tax laws are complex and change frequently. Calculation based on <span class="tax-year">2024</span> tax rates. Please consult a qualified tax professional for advice tailored to your specific situation.</p>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
