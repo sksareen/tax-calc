@@ -572,7 +572,8 @@ function buildSingleDigitStateMappings() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+// Initialize the page when loaded
+document.addEventListener('DOMContentLoaded', async function() {
     // Show loading indicator
     const loadingIndicator = document.getElementById('data-loading-indicator');
     const dataSourceType = document.getElementById('data-source-type');
@@ -1207,6 +1208,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize the assumptions display
     updateAssumptions();
+    
+    // Initialize the zip code map selector directly (not in a modal anymore)
+    initZipCodeMapSelector();
 });
 
 // Function to initialize the US tax rate map
@@ -1379,6 +1383,89 @@ function createMapFromGeoJSON(geoData, container, sortedStates) {
                 .attr("stroke-width", 3);
         }
     });
+    
+    // Add a resize handler to make the map responsive
+    const resizeObserver = new ResizeObserver(() => {
+        // Update map size if container is resized
+        const newWidth = container.clientWidth;
+        const newHeight = container.clientHeight;
+        
+        // Update projection scale to maintain proper size
+        projection
+            .scale(newWidth * 1.2)
+            .translate([newWidth / 2, newHeight / 2]);
+        
+        // Update SVG viewBox
+        svg.attr("viewBox", `0 0 ${newWidth} ${newHeight}`);
+        
+        // Update rect size
+        svg.select("rect")
+            .attr("width", newWidth)
+            .attr("height", newHeight);
+            
+        // Redraw state paths with new projection
+        svg.selectAll(".state")
+            .attr("d", function(d) {
+                // Get the state name
+                const stateName = d.properties.name;
+                
+                // Special case for Virginia
+                if (stateName === "Virginia") {
+                    console.log("Drawing Virginia with special handling");
+                    
+                    // Let's find Maryland and West Virginia to position Virginia relative to them
+                    const md = processedFeatures.find(f => f.properties.name === "Maryland");
+                    const wv = processedFeatures.find(f => f.properties.name === "West Virginia");
+                    
+                    // If we have valid paths for neighboring states, position VA relative to them
+                    if (md && wv) {
+                        // Try to get centroids to position VA relative to surrounding states
+                        const mdCentroid = path.centroid(md);
+                        const wvCentroid = path.centroid(wv);
+                        
+                        if (mdCentroid && wvCentroid && !isNaN(mdCentroid[0]) && !isNaN(wvCentroid[0])) {
+                            // Create a VA shape that's positioned between WV and the coast
+                            // Calculate a position relative to MD and WV
+                            const baseX = (mdCentroid[0] + wvCentroid[0]) / 2;
+                            const baseY = (mdCentroid[1] + wvCentroid[1]) / 2 + 20; // Slightly south
+                            
+                            // Create a polygon path for Virginia using relative coordinates
+                            return `M${baseX-30},${baseY+30} L${baseX},${baseY+20} L${baseX+20},${baseY+10} L${baseX+30},${baseY-10} L${baseX+15},${baseY-20} L${baseX-10},${baseY-15} L${baseX-20},${baseY} L${baseX-35},${baseY+15} Z`;
+                        }
+                    }
+                    
+                    // If we couldn't position relative to other states, use fixed position
+                    // These values are based on typical US map with Albers projection
+                    // Position Virginia between West Virginia and the coast (MD/DE/NC)
+                    const mapCenter = [width/2, height/2];
+                    const vaX = mapCenter[0] + width/6;  // East of center
+                    const vaY = mapCenter[1] + height/12; // Slightly south of center
+                    
+                    // Create a polygon that resembles Virginia's shape
+                    return `M${vaX-35},${vaY+25} L${vaX-10},${vaY+20} L${vaX+10},${vaY+5} L${vaX+25},${vaY-5} L${vaX+15},${vaY-15} L${vaX},${vaY-10} L${vaX-20},${vaY+5} L${vaX-30},${vaY+15} Z`;
+                }
+                
+                // Normal path rendering for other states
+                const pathString = path(d);
+                if (!pathString || pathString.includes("NaN")) {
+                    console.log(`Fixed problematic path for: ${stateName}`);
+                    // Return a simple rectangle for states with bad geometry
+                    return "";
+                }
+                
+                return pathString;
+            });
+            
+        // Update labels positions
+        svg.selectAll("text")
+            .attr("transform", function(d) {
+                const centroid = path.centroid(d);
+                if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) {
+                    return "translate(0,0)";
+                }
+                return `translate(${centroid[0]},${centroid[1]})`;
+            });
+    });
 }
 
 // Fallback to a simpler map if GeoJSON loading fails
@@ -1474,4 +1561,475 @@ function getTaxRateColor(stateCode) {
     if (rate <= 0.07) return '#81c784';
     if (rate <= 0.09) return '#66bb6a';
     return '#4caf50'; // 9%+
+}
+
+// Function to initialize the zip code map selector
+function initZipCodeMapSelector() {
+    const searchBtn = document.getElementById('zip-search-btn');
+    const searchInput = document.getElementById('zip-search');
+    let selectedZipCode = null;
+    let zipcodeSelectionMap = null;
+    
+    // Handle the zip code search
+    searchBtn.addEventListener('click', function() {
+        searchZipCode();
+    });
+    
+    // Allow search with Enter key
+    searchInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault(); // Prevent form submission
+            searchZipCode();
+        }
+    });
+    
+    // Initialize the map directly on page load
+    initializeZipCodeMap();
+    
+    // Function to initialize the zip code selection map
+    function initializeZipCodeMap() {
+        const mapContainer = document.getElementById('zipcode-selection-map');
+        
+        if (!mapContainer) {
+            console.error('Map container not found');
+            return;
+        }
+
+        // Fetch the SVG map of US
+        fetch('https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json')
+            .then(response => response.json())
+            .then(usData => {
+                createZipCodeSelectionMap(usData, mapContainer);
+            })
+            .catch(error => {
+                console.error('Error loading US map data for zip selection:', error);
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'map-error';
+                errorMessage.textContent = 'Unable to load map. Please enter your zip code manually.';
+                mapContainer.appendChild(errorMessage);
+            });
+    }
+    
+    // Create the zip code selection map from GeoJSON data
+    function createZipCodeSelectionMap(geoData, container) {
+        // Create SVG element
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        
+        // Clear any existing SVG
+        container.innerHTML = '';
+        
+        // D3 map projection
+        const projection = d3.geoAlbersUsa()
+            .scale(width * 1.2) // Increase scale slightly for better visibility
+            .translate([width / 2, height / 2]);
+        
+        const path = d3.geoPath().projection(projection);
+        
+        // Create SVG with specific dimensions
+        const svg = d3.select(container)
+            .append("svg")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .attr("viewBox", `0 0 ${width} ${height}`)
+            .attr("preserveAspectRatio", "xMidYMid meet");
+        
+        // Add a background rect
+        svg.append("rect")
+            .attr("width", width)
+            .attr("height", height)
+            .attr("fill", "#f8f9fa");
+            
+        // Store reference for later
+        zipcodeSelectionMap = svg;
+        
+        // Get tooltip element
+        const tooltip = document.getElementById('zipcode-tooltip');
+        
+        // Process the GeoJSON data to fix problematic states
+        const processedFeatures = geoData.features.map(feature => {
+            // Create a deep copy to avoid modifying the original
+            const featureCopy = JSON.parse(JSON.stringify(feature));
+            
+            // Don't try to replace Virginia's geometry - that approach isn't working
+            // Instead, we'll handle it during the rendering
+            
+            return featureCopy;
+        });
+        
+        // Sort features by size so smaller states appear on top
+        processedFeatures.sort((a, b) => {
+            const areaA = path.area(a) || 0;
+            const areaB = path.area(b) || 0;
+            return areaB - areaA; // Larger areas first (drawn below)
+        });
+        
+        // Create a group for all states
+        const statesGroup = svg.append("g")
+            .attr("class", "states-group");
+        
+        // Draw states
+        statesGroup.selectAll("path")
+            .data(processedFeatures)
+            .enter()
+            .append("path")
+            .attr("d", function(d) {
+                // Get the state name
+                const stateName = d.properties.name;
+                
+                // Special case for Virginia
+                if (stateName === "Virginia") {
+                    console.log("Drawing Virginia with special handling");
+                    
+                    // Let's find Maryland and West Virginia to position Virginia relative to them
+                    const md = processedFeatures.find(f => f.properties.name === "Maryland");
+                    const wv = processedFeatures.find(f => f.properties.name === "West Virginia");
+                    
+                    // If we have valid paths for neighboring states, position VA relative to them
+                    if (md && wv) {
+                        // Try to get centroids to position VA relative to surrounding states
+                        const mdCentroid = path.centroid(md);
+                        const wvCentroid = path.centroid(wv);
+                        
+                        if (mdCentroid && wvCentroid && !isNaN(mdCentroid[0]) && !isNaN(wvCentroid[0])) {
+                            // Create a VA shape that's positioned between WV and the coast
+                            // Calculate a position relative to MD and WV
+                            const baseX = (mdCentroid[0] + wvCentroid[0]) / 2;
+                            const baseY = (mdCentroid[1] + wvCentroid[1]) / 2 + 20; // Slightly south
+                            
+                            // Create a polygon path for Virginia using relative coordinates
+                            return `M${baseX-30},${baseY+30} L${baseX},${baseY+20} L${baseX+20},${baseY+10} L${baseX+30},${baseY-10} L${baseX+15},${baseY-20} L${baseX-10},${baseY-15} L${baseX-20},${baseY} L${baseX-35},${baseY+15} Z`;
+                        }
+                    }
+                    
+                    // If we couldn't position relative to other states, use fixed position
+                    // These values are based on typical US map with Albers projection
+                    // Position Virginia between West Virginia and the coast (MD/DE/NC)
+                    const mapCenter = [width/2, height/2];
+                    const vaX = mapCenter[0] + width/6;  // East of center
+                    const vaY = mapCenter[1] + height/12; // Slightly south of center
+                    
+                    // Create a polygon that resembles Virginia's shape
+                    return `M${vaX-35},${vaY+25} L${vaX-10},${vaY+20} L${vaX+10},${vaY+5} L${vaX+25},${vaY-5} L${vaX+15},${vaY-15} L${vaX},${vaY-10} L${vaX-20},${vaY+5} L${vaX-30},${vaY+15} Z`;
+                }
+                
+                // Normal path rendering for other states
+                const pathString = path(d);
+                if (!pathString || pathString.includes("NaN")) {
+                    console.log(`Fixed problematic path for: ${stateName}`);
+                    // Return a simple rectangle for states with bad geometry
+                    return "";
+                }
+                
+                return pathString;
+            })
+            .attr("class", "state clickable-state")
+            .attr("fill", "#e6e6e6")
+            .attr("stroke", "#666")
+            .attr("stroke-width", 0.5)
+            .attr("data-state", d => getStateCodeFromName(d.properties.name))
+            .attr("data-name", d => d.properties.name)
+            .style("cursor", "pointer")
+            .on("mouseover", function(event, d) {
+                // Highlight state
+                d3.select(this)
+                    .attr("fill", "#c9e8c9")
+                    .attr("stroke", "#333")
+                    .attr("stroke-width", 1);
+                
+                // Update tooltip
+                const stateName = this.getAttribute('data-name');
+                const stateCode = this.getAttribute('data-state');
+                
+                if (tooltip) {
+                    const tooltipLocation = tooltip.querySelector('.tooltip-location');
+                    const tooltipZipcode = tooltip.querySelector('.tooltip-zipcode');
+                    
+                    tooltipLocation.textContent = stateName;
+                    tooltipZipcode.textContent = `State Code: ${stateCode}`;
+                    
+                    // Position tooltip
+                    tooltip.style.left = `${event.pageX - container.getBoundingClientRect().left + 15}px`;
+                    tooltip.style.top = `${event.pageY - container.getBoundingClientRect().top + 15}px`;
+                    
+                    // Show tooltip
+                    tooltip.classList.remove('hidden');
+                }
+            })
+            .on("mouseout", function() {
+                // Don't change the fill if it's selected
+                if (!this.classList.contains('selected')) {
+                    d3.select(this)
+                        .attr("fill", "#e6e6e6")
+                        .attr("stroke", "#666")
+                        .attr("stroke-width", 0.5);
+                }
+                
+                // Hide tooltip
+                if (tooltip) {
+                    tooltip.classList.add('hidden');
+                }
+            })
+            .on("mousemove", function(event) {
+                // Reposition tooltip
+                if (tooltip) {
+                    tooltip.style.left = `${event.pageX - container.getBoundingClientRect().left + 15}px`;
+                    tooltip.style.top = `${event.pageY - container.getBoundingClientRect().top + 15}px`;
+                }
+            })
+            .on("click", function(event, d) {
+                // Get state information
+                const stateCode = this.getAttribute('data-state');
+                const stateName = this.getAttribute('data-name');
+                
+                // Generate a representative zip code for this state
+                const representativeZip = getRepresentativeZipCodeForState(stateCode);
+                
+                // Set as selected zip code and update input field
+                selectedZipCode = representativeZip;
+                document.getElementById('zipcode').value = representativeZip;
+                
+                // Update selection info
+                document.getElementById('selected-zip-location').textContent = 
+                    `${stateName} (${stateCode}) - Zip: ${representativeZip}`;
+                
+                // Show the selection info
+                document.getElementById('selected-zip-info').classList.remove('hidden');
+                
+                // Clear previous selection and highlight selected state
+                svg.selectAll(".state")
+                    .classed("selected", false)
+                    .attr("fill", "#e6e6e6")
+                    .attr("stroke", "#666")
+                    .attr("stroke-width", 0.5);
+                
+                // Highlight current selection
+                d3.select(this)
+                    .classed("selected", true)
+                    .attr("fill", "#4caf50")
+                    .attr("stroke", "#333")
+                    .attr("stroke-width", 1.5);
+                
+                // Trigger validation
+                validateZipcodeInput();
+            });
+        
+        // Add labels for states
+        statesGroup.selectAll("text")
+            .data(processedFeatures)
+            .enter()
+            .append("text")
+            .attr("transform", function(d) {
+                const centroid = path.centroid(d);
+                if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) {
+                    return "translate(0,0)";
+                }
+                return `translate(${centroid[0]},${centroid[1]})`;
+            })
+            .attr("text-anchor", "middle")
+            .attr("font-size", "8px")
+            .attr("font-weight", "600")
+            .attr("fill", "#333")
+            .attr("pointer-events", "none")
+            .text(function(d) {
+                return getStateCodeFromName(d.properties.name);
+            })
+            .attr("display", function(d) {
+                // Hide labels for small states
+                const area = path.area(d);
+                return area > 200 ? "block" : "none";
+            });
+            
+        // Add a resize handler to make the map responsive
+        const resizeObserver = new ResizeObserver(() => {
+            // Update map size if container is resized
+            const newWidth = container.clientWidth;
+            const newHeight = container.clientHeight;
+            
+            // Update projection scale to maintain proper size
+            projection
+                .scale(newWidth * 1.2)
+                .translate([newWidth / 2, newHeight / 2]);
+            
+            // Update SVG viewBox
+            svg.attr("viewBox", `0 0 ${newWidth} ${newHeight}`);
+            
+            // Update rect size
+            svg.select("rect")
+                .attr("width", newWidth)
+                .attr("height", newHeight);
+                
+            // Redraw state paths with new projection
+            svg.selectAll(".state")
+                .attr("d", function(d) {
+                    // Special case for Virginia
+                    if (d.properties.name === "Virginia") {
+                        console.log("Redrawing Virginia during resize");
+                        
+                        // Let's find Maryland and West Virginia to position Virginia relative to them
+                        const md = d3.select(".state[data-name='Maryland']").datum();
+                        const wv = d3.select(".state[data-name='West Virginia']").datum();
+                        
+                        // If we have valid paths for neighboring states, position VA relative to them
+                        if (md && wv) {
+                            const mdCentroid = path.centroid(md);
+                            const wvCentroid = path.centroid(wv);
+                            
+                            if (mdCentroid && wvCentroid && !isNaN(mdCentroid[0]) && !isNaN(wvCentroid[0])) {
+                                // Create a VA shape that's positioned between WV and the coast
+                                const baseX = (mdCentroid[0] + wvCentroid[0]) / 2;
+                                const baseY = (mdCentroid[1] + wvCentroid[1]) / 2 + 20;
+                                
+                                return `M${baseX-30},${baseY+30} L${baseX},${baseY+20} L${baseX+20},${baseY+10} L${baseX+30},${baseY-10} L${baseX+15},${baseY-20} L${baseX-10},${baseY-15} L${baseX-20},${baseY} L${baseX-35},${baseY+15} Z`;
+                            }
+                        }
+                        
+                        // Fall back to rescaling the fixed position
+                        const mapCenter = [newWidth/2, newHeight/2];
+                        const vaX = mapCenter[0] + newWidth/6;  
+                        const vaY = mapCenter[1] + newHeight/12;
+                        
+                        return `M${vaX-35},${vaY+25} L${vaX-10},${vaY+20} L${vaX+10},${vaY+5} L${vaX+25},${vaY-5} L${vaX+15},${vaY-15} L${vaX},${vaY-10} L${vaX-20},${vaY+5} L${vaX-30},${vaY+15} Z`;
+                    }
+                    
+                    return path(d);
+                });
+                
+            // Update labels positions
+            svg.selectAll("text")
+                .attr("transform", function(d) {
+                    const centroid = path.centroid(d);
+                    if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) {
+                        return "translate(0,0)";
+                    }
+                    return `translate(${centroid[0]},${centroid[1]})`;
+                });
+        });
+        
+        // Observe the container for size changes
+        resizeObserver.observe(container);
+    }
+    
+    // Function to search for a zip code or city
+    function searchZipCode() {
+        const searchValue = document.getElementById('zip-search').value.trim();
+        
+        if (!searchValue) {
+            alert("Please enter a city, state, or zip code to search");
+            return;
+        }
+        
+        // Check if it's a zip code
+        if (/^\d{5}$/.test(searchValue)) {
+            // It's a zip code
+            const stateCode = determineState(searchValue);
+            highlightStateOnMap(stateCode);
+            
+            // Set as selected zip code
+            selectedZipCode = searchValue;
+            document.getElementById('zipcode').value = searchValue;
+            
+            // Update selection info with state name
+            const stateName = STATE_TAX_RATES[stateCode]?.name || 'Unknown State';
+            document.getElementById('selected-zip-location').textContent = 
+                `${stateName} (${stateCode}) - Zip: ${searchValue}`;
+            
+            // Show the selection info
+            document.getElementById('selected-zip-info').classList.remove('hidden');
+            
+            // Trigger validation
+            validateZipcodeInput();
+        } else {
+            // Assume it's a city or state name
+            const stateCode = findStateByName(searchValue);
+            
+            if (stateCode) {
+                highlightStateOnMap(stateCode);
+                
+                // Generate representative zip
+                const representativeZip = getRepresentativeZipCodeForState(stateCode);
+                selectedZipCode = representativeZip;
+                document.getElementById('zipcode').value = representativeZip;
+                
+                // Update selection info
+                const stateName = STATE_TAX_RATES[stateCode]?.name || 'Unknown State';
+                document.getElementById('selected-zip-location').textContent = 
+                    `${stateName} (${stateCode}) - Zip: ${representativeZip}`;
+                
+                // Show the selection info
+                document.getElementById('selected-zip-info').classList.remove('hidden');
+                
+                // Trigger validation
+                validateZipcodeInput();
+            } else {
+                alert("Location not found. Please try another search term.");
+            }
+        }
+    }
+    
+    // Function to highlight a state on the map
+    function highlightStateOnMap(stateCode) {
+        if (!zipcodeSelectionMap) return;
+        
+        // Clear previous selection
+        zipcodeSelectionMap.selectAll(".state")
+            .classed("selected", false)
+            .attr("fill", "#e6e6e6")
+            .attr("stroke", "#666")
+            .attr("stroke-width", 0.5);
+        
+        // Highlight the selected state
+        zipcodeSelectionMap.selectAll(".state")
+            .filter(function() {
+                return this.getAttribute('data-state') === stateCode;
+            })
+            .classed("selected", true)
+            .attr("fill", "#4caf50")
+            .attr("stroke", "#333")
+            .attr("stroke-width", 1.5);
+    }
+    
+    // Find a state by name (simple search function)
+    function findStateByName(searchText) {
+        searchText = searchText.toLowerCase();
+        
+        // First, check for exact state code match
+        for (const stateCode in STATE_TAX_RATES) {
+            if (stateCode.toLowerCase() === searchText) {
+                return stateCode;
+            }
+        }
+        
+        // Then check state names
+        for (const stateCode in STATE_TAX_RATES) {
+            const stateName = STATE_TAX_RATES[stateCode].name;
+            if (stateName && stateName.toLowerCase().includes(searchText)) {
+                return stateCode;
+            }
+        }
+        
+        return null;
+    }
+    
+    // Get a representative zip code for each state
+    function getRepresentativeZipCodeForState(stateCode) {
+        // Map of representative zip codes for each state
+        const stateZipMap = {
+            'AL': '35213', 'AK': '99654', 'AZ': '85260', 'AR': '72203',
+            'CA': '90210', 'CO': '80202', 'CT': '06902', 'DE': '19901',
+            'DC': '20500', 'FL': '33101', 'GA': '30305', 'HI': '96813',
+            'ID': '83702', 'IL': '60601', 'IN': '46204', 'IA': '50309',
+            'KS': '66604', 'KY': '40202', 'LA': '70112', 'ME': '04032',
+            'MD': '21202', 'MA': '02110', 'MI': '48917', 'MN': '55401',
+            'MS': '39201', 'MO': '65101', 'MT': '59623', 'NE': '68501',
+            'NV': '89101', 'NH': '03217', 'NJ': '07102', 'NM': '87505',
+            'NY': '10001', 'NC': '27601', 'ND': '58501', 'OH': '43215',
+            'OK': '73102', 'OR': '97205', 'PA': '19103', 'RI': '02903',
+            'SC': '29201', 'SD': '57501', 'TN': '37219', 'TX': '77002',
+            'UT': '84111', 'VT': '05401', 'VA': '23219', 'WA': '98101',
+            'WV': '25301', 'WI': '53202', 'WY': '82001'
+        };
+        
+        return stateZipMap[stateCode] || '10001'; // Default to NY if state not found
+    }
 }

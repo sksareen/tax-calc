@@ -51,8 +51,28 @@
                 </div>
                 <div class="form-group">
                     <label for="zipcode">Zip Code</label>
-                    <input type="text" id="zipcode" placeholder="e.g. 90210" required pattern="[0-9]{5}">
+                    <div class="input-with-button">
+                        <input type="text" id="zipcode" placeholder="e.g. 90210" required pattern="[0-9]{5}">
+                    </div>
                     <div id="zipcode-error" class="error hidden">Please enter a valid 5-digit zip code</div>
+                </div>
+
+                <div class="form-group map-selection-section">
+                    <label>Select Location on Map</label>
+                    <div class="zip-search-container">
+                        <input type="text" id="zip-search" placeholder="Search by city or zip">
+                        <button type="button" id="zip-search-btn">Search</button>
+                    </div>
+                    <div class="map-selection-container">
+                        <div id="zipcode-selection-map"></div>
+                        <div id="zipcode-tooltip" class="map-tooltip hidden">
+                            <div class="tooltip-location"></div>
+                            <div class="tooltip-zipcode"></div>
+                        </div>
+                    </div>
+                    <div class="selected-location-info hidden" id="selected-zip-info">
+                        <strong>Selected:</strong> <span id="selected-zip-location"></span>
+                    </div>
                 </div>
                 
                 <div class="advanced-options-toggle">
