@@ -1,5 +1,54 @@
 // Tax year constants
-const TAX_YEAR = 2024;
+const TAX_YEAR = 2025;
+
+// Federal Tax Brackets by filing status for 2025
+const FEDERAL_TAX_BRACKETS_2025 = {
+    single: [
+        { rate: 0.10, min: 0, max: 11925 },
+        { rate: 0.12, min: 11925, max: 48475 },
+        { rate: 0.22, min: 48475, max: 103350 },
+        { rate: 0.24, min: 103350, max: 197300 },
+        { rate: 0.32, min: 197300, max: 250525 },
+        { rate: 0.35, min: 250525, max: 626350 },
+        { rate: 0.37, min: 626350, max: Infinity }
+    ],
+    married_joint: [
+        { rate: 0.10, min: 0, max: 23850 },
+        { rate: 0.12, min: 23850, max: 96950 },
+        { rate: 0.22, min: 96950, max: 206700 },
+        { rate: 0.24, min: 206700, max: 394600 },
+        { rate: 0.32, min: 394600, max: 501050 },
+        { rate: 0.35, min: 501050, max: 751600 },
+        { rate: 0.37, min: 751600, max: Infinity }
+    ],
+    married_separate: [
+        { rate: 0.10, min: 0, max: 11925 },
+        { rate: 0.12, min: 11925, max: 48475 },
+        { rate: 0.22, min: 48475, max: 103350 },
+        { rate: 0.24, min: 103350, max: 197300 },
+        { rate: 0.32, min: 197300, max: 250525 },
+        { rate: 0.35, min: 250525, max: 375800 },
+        { rate: 0.37, min: 375800, max: Infinity }
+    ],
+    head_household: [
+        { rate: 0.10, min: 0, max: 17000 },
+        { rate: 0.12, min: 17000, max: 64850 },
+        { rate: 0.22, min: 64850, max: 103350 },
+        { rate: 0.24, min: 103350, max: 197300 },
+        { rate: 0.32, min: 197300, max: 250500 },
+        { rate: 0.35, min: 250500, max: 626350 },
+        { rate: 0.37, min: 626350, max: Infinity }
+    ],
+    qualifying_widow: [
+        { rate: 0.10, min: 0, max: 23850 },
+        { rate: 0.12, min: 23850, max: 96950 },
+        { rate: 0.22, min: 96950, max: 206700 },
+        { rate: 0.24, min: 206700, max: 394600 },
+        { rate: 0.32, min: 394600, max: 501050 },
+        { rate: 0.35, min: 501050, max: 751600 },
+        { rate: 0.37, min: 751600, max: Infinity }
+    ]
+};
 
 // Federal Tax Brackets by filing status for 2024
 const FEDERAL_TAX_BRACKETS_2024 = {
@@ -22,8 +71,8 @@ const FEDERAL_TAX_BRACKETS_2024 = {
         { rate: 0.37, min: 731200, max: Infinity }
     ],
     married_separate: [
-        { rate: 0.10, min: 0, max: 11600 },
-        { rate: 0.12, min: 11600, max: 47150 },
+        { rate: 0.10, min: 0, max: 14600 },
+        { rate: 0.12, min: 14600, max: 47150 },
         { rate: 0.22, min: 47150, max: 100525 },
         { rate: 0.24, min: 100525, max: 191950 },
         { rate: 0.32, min: 191950, max: 243725 },
@@ -101,6 +150,13 @@ const FEDERAL_TAX_BRACKETS_2023 = {
 
 // Standard deduction by filing status and year
 const STANDARD_DEDUCTIONS = {
+    2025: {
+        single: 15000,
+        married_joint: 30000,
+        married_separate: 15000,
+        head_household: 22500,
+        qualifying_widow: 30000
+    },
     2024: {
         single: 14600,
         married_joint: 29200,
@@ -119,6 +175,10 @@ const STANDARD_DEDUCTIONS = {
 
 // Maximum retirement contribution limits by year
 const RETIREMENT_LIMITS = {
+    2025: {
+        under_50: 23500,
+        over_50: 31000
+    },
     2024: {
         under_50: 23000,
         over_50: 30500
@@ -964,9 +1024,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         } = options;
         
         // Determine which tax brackets to use based on year
-        const federalBrackets = taxYear === '2024' ? 
-            FEDERAL_TAX_BRACKETS_2024[filingStatus] : 
-            FEDERAL_TAX_BRACKETS_2023[filingStatus];
+        const federalBrackets = taxYear === '2025' ? 
+            FEDERAL_TAX_BRACKETS_2025[filingStatus] : 
+            FEDERAL_TAX_BRACKETS_2024[filingStatus];
         
         // Get standard deduction based on filing status and year
         const standardDeduction = STANDARD_DEDUCTIONS[taxYear][filingStatus];
@@ -1116,9 +1176,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         container.innerHTML = '';
         
         // Determine which tax brackets to use
-        const brackets = taxYear === '2024' ? 
-            FEDERAL_TAX_BRACKETS_2024[filingStatus] : 
-            FEDERAL_TAX_BRACKETS_2023[filingStatus];
+        const brackets = taxYear === '2025' ? 
+            FEDERAL_TAX_BRACKETS_2025[filingStatus] : 
+            FEDERAL_TAX_BRACKETS_2024[filingStatus];
         
         // Get standard deduction amount
         const standardDeduction = STANDARD_DEDUCTIONS[taxYear][filingStatus];
@@ -1266,6 +1326,48 @@ function createMapFromGeoJSON(geoData, container, sortedStates) {
         .attr("viewBox", `0 0 ${width} ${height}`)
         .attr("preserveAspectRatio", "xMidYMid meet");
 
+    // Add a defs element for patterns
+    const defs = svg.append("defs");
+    
+    // Create patterns for progressive tax states
+    Object.keys(STATE_TAX_RATES).forEach(stateCode => {
+        const stateInfo = STATE_TAX_RATES[stateCode];
+        if (stateInfo && stateInfo.progressive) {
+            const baseColor = getTaxRateColor(stateCode);
+            
+            // Create diagonal stripe pattern
+            const pattern = defs.append("pattern")
+                .attr("id", `progressive-pattern-${stateCode}`)
+                .attr("patternUnits", "userSpaceOnUse")
+                .attr("width", 8)
+                .attr("height", 8)
+                .attr("patternTransform", "rotate(45)");
+            
+            // Base color rectangle
+            pattern.append("rect")
+                .attr("width", 8)
+                .attr("height", 8)
+                .attr("fill", baseColor);
+            
+            // Add stripes
+            pattern.append("line")
+                .attr("x1", 0)
+                .attr("y1", 0)
+                .attr("x2", 0)
+                .attr("y2", 8)
+                .attr("stroke", "rgba(255,255,255,0.5)")
+                .attr("stroke-width", 2);
+                
+            pattern.append("line")
+                .attr("x1", 4)
+                .attr("y1", 0)
+                .attr("x2", 4)
+                .attr("y2", 8)
+                .attr("stroke", "rgba(255,255,255,0.5)")
+                .attr("stroke-width", 2);
+        }
+    });
+
     // Get tooltip element
     const tooltip = document.getElementById('map-tooltip');
     
@@ -1275,24 +1377,32 @@ function createMapFromGeoJSON(geoData, container, sortedStates) {
         .enter()
         .append("path")
         .attr("d", path)
-        .attr("class", d => {
-            const stateCode = getStateCodeFromName(d.properties.name);
-            const stateInfo = STATE_TAX_RATES[stateCode];
-            return stateInfo && stateInfo.progressive ? "state progressive-tax" : "state";
-        })
+        .attr("class", "state")
         .attr("fill", d => {
             const stateCode = getStateCodeFromName(d.properties.name);
-            return getTaxRateColor(stateCode);
+            const stateInfo = STATE_TAX_RATES[stateCode];
+            
+            if (stateInfo && stateInfo.progressive) {
+                return `url(#progressive-pattern-${stateCode})`;
+            } else {
+                return getTaxRateColor(stateCode);
+            }
         })
         .attr("stroke", "#666")
         .attr("stroke-width", 0.5)
         .attr("data-state", d => getStateCodeFromName(d.properties.name))
         .attr("data-name", d => d.properties.name)
+        .attr("data-progressive", d => {
+            const stateCode = getStateCodeFromName(d.properties.name);
+            const stateInfo = STATE_TAX_RATES[stateCode];
+            return stateInfo && stateInfo.progressive ? "true" : "false";
+        })
         .on("mouseover", function(event) {
             // Highlight state
             d3.select(this)
                 .attr("stroke", "#fff")
-                .attr("stroke-width", 1);
+                .attr("stroke-width", 2)
+                .attr("filter", "drop-shadow(0px 0px 3px rgba(0,0,0,0.3))");
                 
             // Handle tooltip
             const stateCode = this.getAttribute('data-state');
@@ -1337,7 +1447,8 @@ function createMapFromGeoJSON(geoData, container, sortedStates) {
             // Restore state outline
             d3.select(this)
                 .attr("stroke", "#666")
-                .attr("stroke-width", 0.5);
+                .attr("stroke-width", 0.5)
+                .attr("filter", null);
                 
             // Hide tooltip
             tooltip.classList.add('hidden');
@@ -1347,42 +1458,6 @@ function createMapFromGeoJSON(geoData, container, sortedStates) {
             tooltip.style.left = `${event.pageX - container.getBoundingClientRect().left + 15}px`;
             tooltip.style.top = `${event.pageY - container.getBoundingClientRect().top + 15}px`;
         });
-    
-    // Apply pattern to progressive tax states
-    svg.selectAll(".progressive-tax")
-        .style("fill", function() {
-            const stateCode = this.getAttribute("data-state");
-            return `url(#pattern-${stateCode})`;
-        });
-    
-    // Add patterns for progressive tax states
-    const defs = svg.append("defs");
-    
-    sortedStates.forEach(state => {
-        if (state.progressive) {
-            const color = getTaxRateColor(state.code);
-            
-            const pattern = defs.append("pattern")
-                .attr("id", `pattern-${state.code}`)
-                .attr("patternUnits", "userSpaceOnUse")
-                .attr("width", 10)
-                .attr("height", 10)
-                .attr("patternTransform", "rotate(45)");
-            
-            pattern.append("rect")
-                .attr("width", 10)
-                .attr("height", 10)
-                .attr("fill", color);
-            
-            pattern.append("line")
-                .attr("x1", 0)
-                .attr("y1", 0)
-                .attr("x2", 0)
-                .attr("y2", 10)
-                .attr("stroke", "rgba(255,255,255,0.3)")
-                .attr("stroke-width", 3);
-        }
-    });
     
     // Add a resize handler to make the map responsive
     const resizeObserver = new ResizeObserver(() => {
@@ -1398,74 +1473,14 @@ function createMapFromGeoJSON(geoData, container, sortedStates) {
         // Update SVG viewBox
         svg.attr("viewBox", `0 0 ${newWidth} ${newHeight}`);
         
-        // Update rect size
-        svg.select("rect")
-            .attr("width", newWidth)
-            .attr("height", newHeight);
-            
         // Redraw state paths with new projection
         svg.selectAll(".state")
-            .attr("d", function(d) {
-                // Get the state name
-                const stateName = d.properties.name;
-                
-                // Special case for Virginia
-                if (stateName === "Virginia") {
-                    console.log("Drawing Virginia with special handling");
-                    
-                    // Let's find Maryland and West Virginia to position Virginia relative to them
-                    const md = processedFeatures.find(f => f.properties.name === "Maryland");
-                    const wv = processedFeatures.find(f => f.properties.name === "West Virginia");
-                    
-                    // If we have valid paths for neighboring states, position VA relative to them
-                    if (md && wv) {
-                        // Try to get centroids to position VA relative to surrounding states
-                        const mdCentroid = path.centroid(md);
-                        const wvCentroid = path.centroid(wv);
-                        
-                        if (mdCentroid && wvCentroid && !isNaN(mdCentroid[0]) && !isNaN(wvCentroid[0])) {
-                            // Create a VA shape that's positioned between WV and the coast
-                            // Calculate a position relative to MD and WV
-                            const baseX = (mdCentroid[0] + wvCentroid[0]) / 2;
-                            const baseY = (mdCentroid[1] + wvCentroid[1]) / 2 + 20; // Slightly south
-                            
-                            // Create a polygon path for Virginia using relative coordinates
-                            return `M${baseX-30},${baseY+30} L${baseX},${baseY+20} L${baseX+20},${baseY+10} L${baseX+30},${baseY-10} L${baseX+15},${baseY-20} L${baseX-10},${baseY-15} L${baseX-20},${baseY} L${baseX-35},${baseY+15} Z`;
-                        }
-                    }
-                    
-                    // If we couldn't position relative to other states, use fixed position
-                    // These values are based on typical US map with Albers projection
-                    // Position Virginia between West Virginia and the coast (MD/DE/NC)
-                    const mapCenter = [width/2, height/2];
-                    const vaX = mapCenter[0] + width/6;  // East of center
-                    const vaY = mapCenter[1] + height/12; // Slightly south of center
-                    
-                    // Create a polygon that resembles Virginia's shape
-                    return `M${vaX-35},${vaY+25} L${vaX-10},${vaY+20} L${vaX+10},${vaY+5} L${vaX+25},${vaY-5} L${vaX+15},${vaY-15} L${vaX},${vaY-10} L${vaX-20},${vaY+5} L${vaX-30},${vaY+15} Z`;
-                }
-                
-                // Normal path rendering for other states
-                const pathString = path(d);
-                if (!pathString || pathString.includes("NaN")) {
-                    console.log(`Fixed problematic path for: ${stateName}`);
-                    // Return a simple rectangle for states with bad geometry
-                    return "";
-                }
-                
-                return pathString;
-            });
-            
-        // Update labels positions
-        svg.selectAll("text")
-            .attr("transform", function(d) {
-                const centroid = path.centroid(d);
-                if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) {
-                    return "translate(0,0)";
-                }
-                return `translate(${centroid[0]},${centroid[1]})`;
-            });
+            .attr("d", path);
     });
+    
+    resizeObserver.observe(container);
+    
+    return svg;
 }
 
 // Fallback to a simpler map if GeoJSON loading fails

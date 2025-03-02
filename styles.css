@@ -730,11 +730,12 @@ button:active {
 
 .map-container {
     position: relative;
-    height: 400px;
-    margin: 1rem 0;
-    background-color: #f8f9fa;
+    height: 300px;
+    border: 1px solid #e0e0e0;
     border-radius: 8px;
     overflow: hidden;
+    background-color: #f8f9fa;
+    margin-bottom: 15px;
 }
 
 #us-tax-map {
@@ -750,46 +751,59 @@ button:active {
     max-height: 100%;
 }
 
+/* State styling */
 .state {
+    transition: stroke 0.2s, stroke-width 0.2s, filter 0.2s;
     cursor: pointer;
-    transition: opacity 0.3s;
 }
 
 .state:hover {
-    opacity: 0.8;
-    stroke-width: 2px;
+    filter: brightness(1.1) drop-shadow(0px 0px 3px rgba(0,0,0,0.3));
+}
+
+/* Pattern stripe for legend */
+.pattern-stripe {
+    background-color: #81c784;
+    background-image: linear-gradient(45deg, 
+        rgba(255,255,255,0.5) 25%, 
+        transparent 25%, 
+        transparent 50%, 
+        rgba(255,255,255,0.5) 50%, 
+        rgba(255,255,255,0.5) 75%, 
+        transparent 75%, 
+        transparent
+    );
+    background-size: 8px 8px;
+}
+
+/* Specific styling for progressive tax pattern */
+.progressive-tax {
+    stroke-dasharray: 3, 3;
 }
 
 .map-tooltip {
     position: absolute;
-    padding: 10px 15px;
-    background-color: white;
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 10px 14px;
     border-radius: 6px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    font-size: 13px;
+    box-shadow: 0 3px 14px rgba(0, 0, 0, 0.15);
     pointer-events: none;
-    transition: opacity 0.3s;
     z-index: 1000;
-    min-width: 200px;
+    max-width: 250px;
+    transition: opacity 0.2s;
     border-left: 4px solid var(--primary-color);
 }
 
-.map-tooltip.hidden {
-    opacity: 0;
-    visibility: hidden;
-}
-
-.map-tooltip .tooltip-state {
-    font-weight: 700;
-    font-size: 16px;
+.tooltip-state {
+    font-weight: 600;
+    font-size: 14px;
     margin-bottom: 5px;
     color: var(--primary-color);
 }
 
-.map-tooltip .tooltip-rate,
-.map-tooltip .tooltip-rank {
-    font-size: 14px;
-    margin: 3px 0;
-    color: var(--text-color);
+.tooltip-rate, .tooltip-rank {
+    margin-bottom: 3px;
 }
 
 .map-legend {
@@ -831,48 +845,11 @@ button:active {
     color: var(--text-color);
 }
 
-/* Add pattern item to legend for progressive tax states */
-.legend-pattern-item {
-    display: flex;
-    align-items: center;
-    margin-right: 15px;
-    margin-top: 5px;
-}
-
-.pattern-box {
-    width: 20px;
-    height: 20px;
-    margin-right: 5px;
-    border-radius: 3px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    background-color: #81c784;
-    background-image: linear-gradient(45deg, 
-        rgba(255,255,255,0.3) 25%, 
-        transparent 25%, 
-        transparent 50%, 
-        rgba(255,255,255,0.3) 50%, 
-        rgba(255,255,255,0.3) 75%, 
-        transparent 75%, 
-        transparent
-    );
-    background-size: 10px 10px;
-}
-
-.legend-pattern-item span {
-    font-size: 12px;
-    color: var(--text-color);
-}
-
 .map-note {
-    margin-top: 10px;
     font-size: 12px;
     color: #666;
+    margin-top: 10px;
     font-style: italic;
-}
-
-/* Specific styling for progressive tax pattern */
-.progressive-tax {
-    stroke-dasharray: 3, 3;
 }
 
 /* Make map responsive for smaller screens */
@@ -1232,4 +1209,16 @@ button:active {
     padding: 10px 16px;
     margin: 0;
     height: auto;
+}
+
+/* Ensure tooltip hidden state works properly */
+.map-tooltip.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.map-tooltip .tooltip-rate,
+.map-tooltip .tooltip-rank {
+    font-size: 13px;
+    color: var(--text-color);
 }

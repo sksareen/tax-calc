@@ -11,7 +11,7 @@
 <body>
     <header>
         <h1>MoneyGrab Tax Calculator</h1>
-        <p>Quick tax estimates for <span class="tax-year">2024</span></p>
+        <p>Quick tax estimates for <span class="tax-year">2025</span></p>
         
         <div class="trust-indicators">
             <div class="trust-badge">
@@ -32,7 +32,7 @@
     <div class="container" id="main-container">
         <div class="calculator-card" id="calculator-card">
             <div class="card-header">
-                <h2>MoneyGrab Tax Calculator <span class="tax-year-badge">TY <span class="tax-year">2024</span></span></h2>
+                <h2>MoneyGrab Tax Calculator <span class="tax-year-badge">TY <span class="tax-year">2025</span></span></h2>
             </div>
             
             <div id="data-loading-indicator" class="data-loading">
@@ -41,7 +41,7 @@
             </div>
             
             <div class="accuracy-note">
-                This calculator uses official <span class="tax-year">2024</span> tax brackets and rates from the IRS and state tax authorities.
+                This calculator uses official <span class="tax-year">2025</span> tax brackets and rates from the IRS and state tax authorities.
             </div>
             <form id="tax-form">
                 <div class="form-group">
@@ -96,6 +96,7 @@
                     <div class="form-group">
                         <label for="tax-year-select">Tax Year</label>
                         <select id="tax-year-select" class="select-input">
+                            <option value="2025">2025</option>
                             <option value="2024">2024</option>
                             <option value="2023">2023</option>
                         </select>
@@ -137,7 +138,7 @@
                 <h3>Calculation Assumptions</h3>
                 <ul class="assumptions-list">
                     <li>Filing status: <span id="selected-filing-status">Single</span></li>
-                    <li>Tax year: <span class="tax-year">2024</span></li>
+                    <li>Tax year: <span class="tax-year">2025</span></li>
                     <li id="deduction-assumption">Standard deduction: $14,600</li>
                     <li id="retirement-assumption">No retirement contributions</li>
                     <li>No investment income or capital gains</li>
@@ -186,7 +187,7 @@
                     </div>
                 </div>
                 <div class="data-source">
-                    Federal tax calculated using official <span class="tax-year">2024</span> IRS tax brackets for Single filers
+                    Federal tax calculated using official <span class="tax-year">2025</span> IRS tax brackets for Single filers
                 </div>
             </div>
 
@@ -198,51 +199,6 @@
                 </div>
             </div>
 
-            <div class="tax-map-section">
-                <h3>US Tax Rate Map</h3>
-                <div class="map-container">
-                    <div id="us-tax-map"></div>
-                    <div id="map-tooltip" class="map-tooltip hidden">
-                        <div class="tooltip-state"></div>
-                        <div class="tooltip-rate"></div>
-                        <div class="tooltip-rank"></div>
-                    </div>
-                </div>
-                <div class="map-legend">
-                    <div class="legend-header">State Income Tax Rates:</div>
-                    <div class="legend-colors">
-                        <div class="legend-color-item">
-                            <div class="color-box" style="background-color: #e8f5e9;"></div>
-                            <span>0%</span>
-                        </div>
-                        <div class="legend-color-item">
-                            <div class="color-box" style="background-color: #c8e6c9;"></div>
-                            <span>1-3%</span>
-                        </div>
-                        <div class="legend-color-item">
-                            <div class="color-box" style="background-color: #a5d6a7;"></div>
-                            <span>3-5%</span>
-                        </div>
-                        <div class="legend-color-item">
-                            <div class="color-box" style="background-color: #81c784;"></div>
-                            <span>5-7%</span>
-                        </div>
-                        <div class="legend-color-item">
-                            <div class="color-box" style="background-color: #66bb6a;"></div>
-                            <span>7-9%</span>
-                        </div>
-                        <div class="legend-color-item">
-                            <div class="color-box" style="background-color: #4caf50;"></div>
-                            <span>9%+</span>
-                        </div>
-                    </div>
-                    <div class="legend-pattern-item">
-                        <div class="pattern-box"></div>
-                        <span>Progressive Tax Rates</span>
-                    </div>
-                    <div class="map-note">Hover over states to see details. Progressive states shown with stripe pattern.</div>
-                </div>
-            </div>
 
             <div class="savings-opportunities">
                 <h3>Tax Savings Opportunities</h3>
@@ -256,7 +212,7 @@
     </div>
 
     <div class="disclaimer">
-        <p><strong>Disclaimer:</strong> This calculator provides estimates based on simplified assumptions and should not be considered tax advice. Tax laws are complex and change frequently. Calculation based on <span class="tax-year">2024</span> tax rates. Please consult a qualified tax professional for advice tailored to your specific situation.</p>
+        <p><strong>Disclaimer:</strong> This calculator provides estimates based on simplified assumptions and should not be considered tax advice. Tax laws are complex and change frequently. Calculation based on <span class="tax-year">2025</span> tax rates. Please consult a qualified tax professional for advice tailored to your specific situation.</p>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
